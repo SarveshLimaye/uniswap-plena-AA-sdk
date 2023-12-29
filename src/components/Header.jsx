@@ -1,5 +1,5 @@
 import React from "react";
-import { Avatar } from "antd";
+import { Avatar, Button } from "antd";
 import { AntDesignOutlined } from "@ant-design/icons";
 import { shortAddress } from "../utils/shortAddress.js";
 
@@ -17,12 +17,12 @@ export default function Header({ disconnect, walletAddress }) {
         </p>
       </div>
       <div>
-        <p
+        <Button
           className="text-sm font-regular my-0 cursor-pointer"
           onClick={disconnect}
         >
           {"Disconnect"}
-        </p>
+        </Button>
       </div>
     </div>
   );
