@@ -1,24 +1,42 @@
-import logo from './logo.svg';
-import './App.css';
+import { Button, Input, Space } from "antd";
+import { usePlenaWallet } from "plena-wallet-sdk";
+import Header from "./components/Header";
 
 function App() {
+  const { openModal, closeConnection, sendTransaction, walletAddress } =
+    usePlenaWallet();
+
+  const disconnect = async () => {
+    closeConnection();
+  };
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <>
+      {!walletAddress ? (
+        <div className="flex flex-col items-center justify-center h-full">
+          <h1 className="mb-8 text-2xl font-bold">Welcome to Plena Connect</h1>
+          <Button
+            type="primary"
+            onClick={openModal}
+            className="text-sm font-bold"
+          >
+            Connect
+          </Button>
+        </div>
+      ) : (
+        <div className=" h-full">
+          <Header disconnect={disconnect} walletAddress={walletAddress} />
+          <Space.Compact block size="small">
+            <Input
+              style={{
+                width: "40%",
+              }}
+              placeholder="Enter amount of usdt to swap"
+            />
+            <Button type="primary">Submit</Button>
+          </Space.Compact>
+        </div>
+      )}
+    </>
   );
 }
 
