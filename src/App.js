@@ -1,22 +1,22 @@
 import { useState } from "react";
 import { Button, Input, Space } from "antd";
-import { ethers, providers } from "ethers";
+import { ethers } from "ethers";
 import erc20abi from "./utils/erc20abi.json";
 import { Token, CurrencyAmount, TradeType, Percent } from "@uniswap/sdk-core";
+import SendTxnModal from "./modals/SendTxModal";
 import { usePlenaWallet } from "plena-wallet-sdk";
 import JSBI from "jsbi";
-import {
-  AlphaRouter,
-  SwapOptionsSwapRouter02,
-  SwapType,
-} from "@uniswap/smart-order-router";
+import { AlphaRouter, SwapType } from "@uniswap/smart-order-router";
 import Header from "./components/Header";
 
 function App() {
+  const V3_SWAP_ROUTER_ADDRESS = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
   const { openModal, closeConnection, sendTransaction, walletAddress } =
     usePlenaWallet();
-
-  const [amount, setAmount] = useState(0);
+  const [amount, setAmount] = useState();
+  const [isTxnModalOpen, setIsTxnModalOpen] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [result, setResult] = useState(null);
 
   function fromReadableAmount(amount, decimals) {
     const extraDigits = Math.pow(10, countDecimals(amount));
@@ -60,8 +60,19 @@ function App() {
     "USD//C"
   );
 
+  const openTxnModal = () => {
+    setIsTxnModalOpen(true);
+  };
+
+  const closeTxnModal = () => {
+    setIsTxnModalOpen(false);
+    setPending(false);
+    setResult(false);
+  };
+
   const swap = async () => {
-    const V3_SWAP_ROUTER_ADDRESS = "0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45";
+    setPending(true);
+    openTxnModal();
     const polygonProvider = new ethers.providers.JsonRpcProvider(
       "https://polygon-rpc.com/"
     );
@@ -70,7 +81,7 @@ function App() {
     console.log(router);
 
     const rawTokenAmountIn = fromReadableAmount(amount, USDT_TOKEN.decimals);
-    console.log(rawTokenAmountIn[0]);
+    console.log(rawTokenAmountIn);
 
     const route = await router.route(
       CurrencyAmount.fromRawAmount(USDT_TOKEN, rawTokenAmountIn[0]),
@@ -87,28 +98,17 @@ function App() {
       polygonProvider
     );
 
-    console.log(contract);
-
     const txnData1 = contract.interface.encodeFunctionData("approve", [
       V3_SWAP_ROUTER_ADDRESS,
       rawTokenAmountIn[0],
     ]);
 
-    console.log(txnData1);
-
-    const txnData2 = {
-      data: route?.methodParameters?.calldata,
-      to: V3_SWAP_ROUTER_ADDRESS,
-      value: route?.methodParameters?.value,
-      from: walletAddress,
-      maxFeePerGas: 100000000000,
-      maxPriorityFeePerGas: 100000000000,
-    };
+    const txnData2 = route.methodParameters.calldata;
 
     const tx = {
       from: walletAddress,
       data: [txnData1, txnData2],
-      to: USDT_TOKEN.address,
+      to: [USDT_TOKEN.address, V3_SWAP_ROUTER_ADDRESS],
       tokens: ["", ""],
       amounts: ["0x0", "0x0"],
     };
@@ -122,9 +122,20 @@ function App() {
         },
       });
 
-      console.log(res);
+      if (!res?.success) {
+        setResult(false);
+        return;
+      }
+      const formattedResult = {
+        method: "send_transaction",
+        txHash: res?.content?.transactionHash,
+        from: walletAddress,
+      };
+      setResult(formattedResult);
     } catch (error) {
-      console.log(error);
+      setResult(null);
+    } finally {
+      setPending(false);
     }
   };
 
@@ -162,6 +173,12 @@ function App() {
               Submit
             </Button>
           </Space.Compact>
+          <SendTxnModal
+            isModalOpen={isTxnModalOpen}
+            onCancel={closeTxnModal}
+            pendingRequest={pending}
+            result={result}
+          />
         </div>
       )}
     </>
